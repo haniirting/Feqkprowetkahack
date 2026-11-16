@@ -1,0 +1,16 @@
+services:
+  max-lab:
+    build: .
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      - CAPTURES=/data/captures.jsonl
+    volumes:
+      - ./data:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
